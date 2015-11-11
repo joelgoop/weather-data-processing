@@ -1,6 +1,10 @@
 # -*- coding: utf-8 -*-
 from scipy.interpolate import interp1d
 import numpy as np
+import logging
+
+logger = logging.getLogger(__name__)
+logger.debug('Entering TradeWind module.')
 
 # Based on TradeWind deliverable D2.4
 # WP2.6 – Equivalent Wind Power Curves
@@ -16,6 +20,7 @@ interp_args = {'kind': 'linear','bounds_error': False, 'fill_value': 0}
 output_fcn = {key: interp1d(windspeeds,np.array(output_vals)/100.0,**interp_args) for key,output_vals in output_percent.iteritems()}
 
 def power(ws,key):
+    logger.debug("Getting and applying TradeWind power curve with key '{}'.".format(key))
     return output_fcn[key](ws)
 
 def lowland_future(ws):
@@ -29,16 +34,3 @@ def upland_future(ws):
 def offshore_future(ws):
     """Regional power curve function for future offshore wind power."""
     return power(ws,'offshore')
-
-
-if __name__ == '__main__':
-    import matplotlib.pyplot as plt
-
-    xs = np.linspace(max(windspeeds)+2,min(windspeeds),500)
-    ll = lowland_future(xs)
-    ul = upland_future(xs)
-    os = offshore_future(xs)
-
-    plt.plot(xs,ll,xs,ul,xs,os)
-    plt.legend(['lowland','upland','offshore'])
-    plt.show()
