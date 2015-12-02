@@ -3,13 +3,12 @@ from setuptools import setup
 setup(
     name='weather-process',
     version='0.1',
-    py_modules=['process_wdata'],
-    packages=['windpower'],
+    packages=['prow'],
     install_requires=[
         'Click',
     ],
     entry_points='''
         [console_scripts]
-        prow=process_wdata:cli
+        prow=prow.process_wdata:cli
     ''',
 )
