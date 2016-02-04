@@ -71,6 +71,9 @@ def connect_spatial_db(path,dll_path):
     """
     Connect to a spatial db and init metadata (if not existing).
 
+    Args:
+        path: path to db file
+        dll_path: path to mod_spatialite.dll
     """
     logger.debug("Connecting to db at '{}'".format(path))
     conn = sqlite.connect(path)
