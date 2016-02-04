@@ -1,4 +1,5 @@
 from contextlib import contextmanager
+from collections import defaultdict
 import os
 import codecs
 
@@ -36,3 +37,5 @@ def quote_identifier(s, errors="strict"):
         encodable = encodable.replace("\x00", replacement)
 
     return "\"" + encodable.replace("\"", "\"\"") + "\""
+
+multilevel_dict = lambda: defaultdict(multilevel_dict)

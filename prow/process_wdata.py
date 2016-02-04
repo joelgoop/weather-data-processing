@@ -34,41 +34,41 @@ def production(datasource,datatype,**kwargs):
 
 
 @cli.command('prep-gis',help='preparatory GIS calculations')
-@click.argument('datasource',type=click.Choice(['merra']),default='merra')
-@click.option('--source','-s',type=click.Path(exists=True,file_okay=False),required=True)
-@click.option('--dest','-d',type=click.Path(exists=True,file_okay=False),required=True)
-@click.option('--exclude-dir','-e',type=click.Path(exists=True,file_okay=False),required=False)
-@click.option('--extrap-method','-ex',type=click.Choice(['powerlaw','loglaw']),required=True,default='powerlaw')
-def prepare_gis(datasource,datatype,**kwargs):
-    if datasource=='merra':
-        if datatype=='wind':
-            import windpower.merra
+@click.option('--spatial-db','-s',type=click.Path(exists=True,dir_okay=False),required=True)
+@click.option('--dll-path','-dp',type=click.Path(exists=True,file_okay=False),required=True,default=r'D:\venvs\weather-data\DLLs')
+def prepare_gis(spatial_db,dll_path,**kwargs):
+    import gis.calculations
+    import gis.data
 
-            logger.info('Processing wind data from MERRA.')
-            windpower.merra.production(**kwargs)
-        else:
-            logger.error('Unknown data type!')
-    else:
-        logger.error('Unknown data source!')
+    logger.info('Calculating intersections between grid and regions.')
+    conn,gis.data.connect_spatial_db('C:/data_tmp/gis/test-gis.sqlite',dll_path)
+    intersections = gis.calculations.get_intersections(conn,**kwargs)
+    print intersections
 
 
-@cli.command(help='match sites regions and exclude protected')
-@click.argument('datasource',type=click.Choice(['merra']),default='merra')
-@click.option('--source','-s',type=click.Path(exists=True,file_okay=False),required=True)
-@click.option('--dest','-d',type=click.Path(exists=True,file_okay=False),required=True)
-@click.option('--exclude-dir','-e',type=click.Path(exists=True,file_okay=False),required=False)
-@click.option('--extrap-method','-ex',type=click.Choice(['powerlaw','loglaw']),required=True,default='powerlaw')
-def matchsites(datasource,datatype,**kwargs):
-    if datasource=='merra':
-        if datatype=='wind':
-            import windpower.merra
+@cli.command('create-classes',help='create wind classes for each region')
+@click.option('--spatial-db','-s',
+                help='path to spatial database',
+                type=click.Path(exists=True,dir_okay=False),
+                required=True)
+@click.option('--dll-path','-dp',
+                help='path to spatialite extension DLLs',
+                type=click.Path(exists=True,file_okay=False),
+                default=r'D:\venvs\weather-data\DLLs')
+def create_classes(spatial_db,dll_path,**kwargs):
+    import gis.calculations
+    import gis.data
 
-            logger.info('Processing wind data from MERRA.')
-            windpower.merra.production(**kwargs)
-        else:
-            logger.error('Unknown data type!')
-    else:
-        logger.error('Unknown data source!')
+    logger.info('Calculating intersections between grid and regions.')
+    conn = gis.data.connect_spatial_db(spatial_db,dll_path)
+    intersections = gis.calculations.get_intersections(conn,**kwargs)
+    for reg in intersections:
+        if 'SE' in reg:
+            print "----------------------------------------------------"
+            print "Region {} matches {} sites. Total area is {} km2.".format(
+                        reg,
+                        len(intersections[reg]),
+                        sum(intersections[reg].itervalues())/1e6)
 
 
 @cli.command(help='create some helpful plots')
