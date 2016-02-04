@@ -78,16 +78,16 @@ def create_classes(spatial_db,dll_path,**kwargs):
 @click.option('--timestep','-t',type=int,required=False)
 @click.option('--key','-k',type=str,required=True,default='wp_output_100m')
 def plot(source,plottype,timestep,key,savefile,**kwargs):
-    import plotting
+    import plotting.map
 
     if timestep is None and plottype=='timestep':
         logger.error('Timestep plot chosen, but no timestep given.')
     if timestep is not None and plottype!='timestep':
         logger.error('Timestep plot not chosen, but timestep given.')
 
-    fig,ax = plotting.plt_from_file(source,key,plottype,timestep)
+    fig,ax = plotting.map.plt_from_file(source,key,plottype,timestep)
     if savefile is not None:
-        fig.savefig(savefile,dpi=500,bbox_inches='tight')
+        fig.savefig(savefile,bbox_inches='tight')
     else:
         plt.show()
 
