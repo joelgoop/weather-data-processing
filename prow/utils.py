@@ -1,5 +1,6 @@
 from contextlib import contextmanager
 from collections import defaultdict
+from itertools import tee, izip
 import os
 import codecs
 
@@ -38,4 +39,20 @@ def quote_identifier(s, errors="strict"):
 
     return "\"" + encodable.replace("\"", "\"\"") + "\""
 
+# Multi-level dictionary defaulting to itself. Adds new levels automatically.
 multilevel_dict = lambda: defaultdict(multilevel_dict)
+
+def pairwise(iterable):
+    """
+    Iterate pairwise over some sequence.
+    s -> (s0,s1), (s1,s2), (s2, s3), ...
+
+    Args:
+        iterable: iterable to create pairs from
+
+    Returns:
+        iterator<tuple>: new iterator containing pairs
+    """
+    a, b = tee(iterable)
+    next(b, None)
+    return izip(a, b)

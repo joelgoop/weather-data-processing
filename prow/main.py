@@ -82,20 +82,18 @@ def prepare_gis(spatial_db,dll_path,**kwargs):
                 help='path to spatialite extension DLLs',
                 type=click.Path(exists=True,file_okay=False),
                 default=r'D:\venvs\weather-data\DLLs')
-def create_classes(spatial_db,dll_path,**kwargs):
+@click.option('--wind-key','-wp',
+                help='path to wind production HDF file',
+                type=click.Path(exists=True,dir_okay=False),
+                required=True)
+def create_classes(spatial_db,dll_path,wind_data,**kwargs):
+    print kwargs
     import gis.calculations
     import gis.data
 
     logger.info('Calculating intersections between grid and regions.')
     conn = gis.data.connect_spatial_db(spatial_db,dll_path)
     intersections = gis.calculations.get_intersections(conn,**kwargs)
-    for reg in intersections:
-        if 'SE' in reg:
-            print "----------------------------------------------------"
-            print "Region {} matches {} sites. Total area is {} km2.".format(
-                        reg,
-                        len(intersections[reg]),
-                        sum(intersections[reg].itervalues())/1e6)
 
 
 @cli.command(help='create some helpful plots')
