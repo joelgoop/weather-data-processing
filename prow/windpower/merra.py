@@ -60,14 +60,20 @@ def merra_power_law(z,h,v10,v50):
     """
     return power_law(z,h,(10.0,v10),(50.0-h,v50))
 
-def production(source,dest,powercurve,extrap_method,**kwargs):
+EXTRAPOLATORS = {
+    'loglaw':vectorize_merra_log_law,
+    'powrelaw': vectorize_merra_power_law
+}
+
+def production(source,dest,powercurve,extrapolate,**kwargs):
     """
     Transform MERRA wind speed data into wind power production time series.
 
     Args:
         source (str): path to source data file
         dest (str): path to destination folder
-
+        powercurve (function): function to transform wind speed to output
+        extrapolate (function): an extrapolator for MERRA data (h, ws10m, ws50m)
     """
     logger.debug('Entering production transformation function for MERRA wind.')
     import tradewind
@@ -98,34 +104,16 @@ def production(source,dest,powercurve,extrap_method,**kwargs):
             lats = np.array(infile['latitude'])
             time = np.array(infile['time'])
 
-        # Extrapolate wind speed to 100 m height
-        z = 100.
-        if extrap_method=='powerlaw':
-            logger.info('Choosing power law extrapolation to {} m.'.format(z))
-            wind_speed_z = vectorize_merra_power_law(z)
-        elif extrap_method=='loglaw':
-            logger.info('Choosing log law extrapolation to {} m.'.format(z))
-            wind_speed_z = vectorize_merra_log_law(z)
-        else:
-            logger.err
+        # Extrapolate wind speed to hub height
         logger.debug('Calculating vector magnitude of wind speeds.')
         abs_ws10 = np.sqrt(np.square(u10)+np.square(v10))
         abs_ws50 = np.sqrt(np.square(u50)+np.square(v50))
         logger.debug('Running extrapolation function.')
-        abs_ws_z = wind_speed_z(h,abs_ws10,abs_ws50)
+        abs_ws_z = extrapolate(h,abs_ws10,abs_ws50)
 
         # Apply the selected power curve
-        if powercurve=='tw_lowland':
-            logger.info('Applying TradeWind lowland future power curve.')
-            wp_output = tradewind.lowland_future(abs_ws_z)
-        elif powercurve=='tw_highland':
-            logger.info('Applying TradeWind highland future power curve.')
-            wp_output = tradewind.highland_future(abs_ws_z)
-        elif powercurve=='tw_offshore':
-            logger.info('Applying TradeWind offshore future power curve.')
-            wp_output = tradewind.offshore_future(abs_ws_z)
-        else:
-            logger.error('Unknown power curve.')
+        logger.info("Applying power curve '{}'.".format(powercurve.__name__))
+        wp_output = powercurve(abs_ws_z)
 
         outfile_path = os.path.join(dest,'windpower_output.merra.{}.{}m.{}.{}.hdf5'.format(extrap_method,int(z),powercurve,year))
         logger.debug('Trying to open h5 file {}.'.outfile_path)

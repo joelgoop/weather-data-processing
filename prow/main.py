@@ -1,9 +1,15 @@
 # -*- coding: utf-8 -*-
 import click
 import logging, logging.config
+import windpower.tradewind
 
 logger = logging.getLogger(__name__)
 
+POWER_CURVES = {
+    'tw_lowland': windpower.tradewind.lowland_future,
+    'tw_highland': windpower.tradewind.upland_future,
+    'tw_offshore': windpower.tradewind.offshore_future
+}
 
 @click.group(help='process weather data to calculate vRES production and potential')
 @click.option('--debug',is_flag=True,help='Show debug messages.')
@@ -13,22 +19,26 @@ def cli(debug):
                         format="%(asctime)s [%(levelname)-8s] %(message)s",
                         datefmt="%H:%M:%S")
 
-@cli.command(help='calculate vRES production from weather data')
-@click.argument('datasource',type=click.Choice(['merra']),default='merra')
-@click.argument('datatype',type=click.Choice(['wind', 'solar']))
+@cli.command('wind-production',help='calculate vRES production from weather data')
 @click.option('--source','-s',type=click.Path(exists=True,file_okay=False),required=True)
 @click.option('--dest','-d',type=click.Path(exists=True,file_okay=False),required=True)
-@click.option('--powercurve','-pc',type=click.Choice(['tw_lowland','tw_highland','tw_offshore']),required=True,default='tw_lowland')
-@click.option('--extrap-method','-ex',type=click.Choice(['powerlaw','loglaw']),required=True,default='powerlaw')
-def production(datasource,datatype,**kwargs):
-    if datasource=='merra':
-        if datatype=='wind':
-            import windpower.merra
+@click.option('--powercurve','-pc',type=click.Choice(POWER_CURVES.keys()),default='tw_lowland')
+@click.option('--extrap-method','-ex',type=click.Choice(['powerlaw','loglaw']),default='powerlaw')
+@click.option('--hubheight','-z',type=float,default=100.)
+@click.option('--datasource',
+                type=click.Choice(['merra']),
+                default='merra',
+                help='the origin of the data')
+def wind_production(datasource,powercurve,extrap_method,hubheight,**kwargs):
+    kwargs['powercurve'] = POWER_CURVES[powercurve]
 
-            logger.info('Processing wind data from MERRA.')
-            windpower.merra.production(**kwargs)
-        else:
-            logger.error('Unknown data type!')
+    if datasource=='merra':
+        import windpower.merra
+        extrapolator = windpower.merra.EXTRAPOLATORS[extrap_method]
+        kwargs['extrapolate'] = extrapolator(hubheight)
+
+        logger.info('Processing wind data from MERRA.')
+        windpower.merra.production(**kwargs)
     else:
         logger.error('Unknown data source!')
 
