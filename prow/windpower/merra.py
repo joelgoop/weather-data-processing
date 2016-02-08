@@ -62,18 +62,20 @@ def merra_power_law(z,h,v10,v50):
 
 EXTRAPOLATORS = {
     'loglaw':vectorize_merra_log_law,
-    'powrelaw': vectorize_merra_power_law
+    'powerlaw': vectorize_merra_power_law
 }
 
-def production(source,dest,powercurve,extrapolate,**kwargs):
+def production(source,powercurve,extrapolate,**kwargs):
     """
     Transform MERRA wind speed data into wind power production time series.
 
     Args:
         source (str): path to source data file
-        dest (str): path to destination folder
         powercurve (function): function to transform wind speed to output
         extrapolate (function): an extrapolator for MERRA data (h, ws10m, ws50m)
+
+    Returns:
+        tuple: latitudes, longitudes, time, wind speed (hub height), wind power output
     """
     logger.debug('Entering production transformation function for MERRA wind.')
     import tradewind
@@ -104,6 +106,7 @@ def production(source,dest,powercurve,extrapolate,**kwargs):
             lats = np.array(infile['latitude'])
             time = np.array(infile['time'])
 
+        logger.info("Calculating and extrapolating.")
         # Extrapolate wind speed to hub height
         logger.debug('Calculating vector magnitude of wind speeds.')
         abs_ws10 = np.sqrt(np.square(u10)+np.square(v10))
@@ -115,14 +118,4 @@ def production(source,dest,powercurve,extrapolate,**kwargs):
         logger.info("Applying power curve '{}'.".format(powercurve.__name__))
         wp_output = powercurve(abs_ws_z)
 
-        outfile_path = os.path.join(dest,'windpower_output.merra.{}.{}m.{}.{}.hdf5'.format(extrap_method,int(z),powercurve,year))
-        logger.debug('Trying to open h5 file {}.'.outfile_path)
-        with h5py.File(outfile_path,'w') as outfile:
-            logger.info('Saving to file {}.'.format(outfile_path))
-            outfile['longitude'] = longs
-            outfile['latitude'] = lats
-            outfile['time'] = time
-            outfile['ws_10m'] = abs_ws10
-            outfile['ws_50m'] = abs_ws50
-            outfile['ws_{}m'.format(int(z))] = abs_ws_z
-            outfile['wp_output_{}m'.format(int(z))] = wp_output
+        return lats,longs,time,abs_ws_z,wp_output

@@ -2,6 +2,7 @@
 import click
 import logging, logging.config
 import windpower.tradewind
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +30,7 @@ def cli(debug):
                 type=click.Choice(['merra']),
                 default='merra',
                 help='the origin of the data')
-def wind_production(datasource,powercurve,extrap_method,hubheight,**kwargs):
+def wind_production(dest,datasource,powercurve,extrap_method,hubheight,**kwargs):
     kwargs['powercurve'] = POWER_CURVES[powercurve]
 
     if datasource=='merra':
@@ -38,7 +39,21 @@ def wind_production(datasource,powercurve,extrap_method,hubheight,**kwargs):
         kwargs['extrapolate'] = extrapolator(hubheight)
 
         logger.info('Processing wind data from MERRA.')
-        windpower.merra.production(**kwargs)
+        lats,longs,time,ws_z,wp_output = windpower.merra.production(**kwargs)
+
+        outfile_path = os.path.join(dest,
+                                    'windpower_output.merra.{}.{}m.{}.{}.hdf5'.format(extrap_method,
+                                                                                      int(hubheight),
+                                                                                      powercurve,
+                                                                                      year))
+        logger.debug('Trying to open h5 file {}.'.outfile_path)
+        with h5py.File(outfile_path,'w') as outfile:
+            logger.info('Saving to file {}.'.format(outfile_path))
+            outfile['longitude'] = longs
+            outfile['latitude'] = lats
+            outfile['time'] = time
+            outfile['ws_{}m'.format(int(hubheigt))] = ws_z
+            outfile['wp_output'] = wp_output
     else:
         logger.error('Unknown data source!')
 
@@ -47,13 +62,15 @@ def wind_production(datasource,powercurve,extrap_method,hubheight,**kwargs):
 @click.option('--spatial-db','-s',type=click.Path(exists=True,dir_okay=False),required=True)
 @click.option('--dll-path','-dp',type=click.Path(exists=True,file_okay=False),required=True,default=r'D:\venvs\weather-data\DLLs')
 def prepare_gis(spatial_db,dll_path,**kwargs):
-    import gis.calculations
-    import gis.data
+    # import gis.calculations
+    # import gis.data
+    # import windpower.classes
 
-    logger.info('Calculating intersections between grid and regions.')
-    conn,gis.data.connect_spatial_db('C:/data_tmp/gis/test-gis.sqlite',dll_path)
-    intersections = gis.calculations.get_intersections(conn,**kwargs)
-    print intersections
+    # logger.info('Calculating intersections between grid and regions.')
+    # conn,gis.data.connect_spatial_db('C:/data_tmp/gis/test-gis.sqlite',dll_path)
+    # intersections = gis.calculations.get_intersections(conn,**kwargs)
+    # print intersections
+    logger.error('Not implemented!')
 
 
 @cli.command('create-classes',help='create wind classes for each region')
