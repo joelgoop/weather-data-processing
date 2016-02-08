@@ -9,6 +9,6 @@ setup(
     ],
     entry_points='''
         [console_scripts]
-        prow=prow.process_wdata:cli
+        prow=prow.main:cli
     ''',
 )
