@@ -98,19 +98,14 @@ def production(source,powercurve,extrapolate,**kwargs):
         with h5py.File(f,'r') as infile:
             logger.info('Reading variables from {}.'.format(f))
             h = np.array(infile['disph'])
-            u10 = np.absolute(np.array(infile['u10m']))
-            v10 = np.absolute(np.array(infile['v10m']))
-            u50 = np.absolute(np.array(infile['u50m']))
-            v50 = np.absolute(np.array(infile['v50m']))
+            abs_ws10 = np.sqrt(np.square(infile['u10m'])+np.square(infile['v10m']))
+            abs_ws50 = np.sqrt(np.square(infile['u50m'])+np.square(infile['v50m']))
             longs = np.array(infile['longitude'])
             lats = np.array(infile['latitude'])
             time = np.array(infile['time'])
 
         logger.info("Calculating and extrapolating.")
         # Extrapolate wind speed to hub height
-        logger.debug('Calculating vector magnitude of wind speeds.')
-        abs_ws10 = np.sqrt(np.square(u10)+np.square(v10))
-        abs_ws50 = np.sqrt(np.square(u50)+np.square(v50))
         logger.debug('Running extrapolation function.')
         abs_ws_z = extrapolate(h,abs_ws10,abs_ws50)
 
@@ -118,4 +113,4 @@ def production(source,powercurve,extrapolate,**kwargs):
         logger.info("Applying power curve '{}'.".format(powercurve.__name__))
         wp_output = powercurve(abs_ws_z)
 
-        return lats,longs,time,abs_ws_z,wp_output
+        yield year,lats,longs,time,abs_ws_z,wp_output

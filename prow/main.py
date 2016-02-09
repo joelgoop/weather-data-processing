@@ -35,25 +35,25 @@ def wind_production(dest,datasource,powercurve,extrap_method,hubheight,**kwargs)
 
     if datasource=='merra':
         import windpower.merra
+        import h5py
         extrapolator = windpower.merra.EXTRAPOLATORS[extrap_method]
         kwargs['extrapolate'] = extrapolator(hubheight)
 
         logger.info('Processing wind data from MERRA.')
-        lats,longs,time,ws_z,wp_output = windpower.merra.production(**kwargs)
-
-        outfile_path = os.path.join(dest,
-                                    'windpower_output.merra.{}.{}m.{}.{}.hdf5'.format(extrap_method,
-                                                                                      int(hubheight),
-                                                                                      powercurve,
-                                                                                      year))
-        logger.debug('Trying to open h5 file {}.'.outfile_path)
-        with h5py.File(outfile_path,'w') as outfile:
-            logger.info('Saving to file {}.'.format(outfile_path))
-            outfile['longitude'] = longs
-            outfile['latitude'] = lats
-            outfile['time'] = time
-            outfile['ws_{}m'.format(int(hubheigt))] = ws_z
-            outfile['wp_output'] = wp_output
+        for year,lats,longs,time,ws_z,wp_output in windpower.merra.production(**kwargs):
+            outfile_path = os.path.join(dest,
+                                        'windpower_output.merra.{}.{}m.{}.{}.hdf5'.format(extrap_method,
+                                                                                          int(hubheight),
+                                                                                          powercurve,
+                                                                                          year))
+            logger.debug('Trying to open h5 file {}.'.format(outfile_path))
+            with h5py.File(outfile_path,'w') as outfile:
+                logger.info('Saving to file {}.'.format(outfile_path))
+                outfile['longitude'] = longs
+                outfile['latitude'] = lats
+                outfile['time'] = time
+                outfile['ws_{}m'.format(int(hubheight))] = ws_z
+                outfile['wp_output'] = wp_output
     else:
         logger.error('Unknown data source!')
 
