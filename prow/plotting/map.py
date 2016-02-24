@@ -56,13 +56,20 @@ def plt_from_file(fpath,key,plottype,timestep):
     Returns:
         tuple: figure and axis object with plot
     """
+
     logger.info("Plotting {} of {} from {}".format(plottype,key,fpath))
     with h5py.File(fpath) as f:
         lat,lon = np.meshgrid(f['latitude'][:],f['longitude'][:])
+        try:
+            k1,k2 = key
+            data = np.sqrt(np.square(f[k1])+np.square(f[k2]))
+        except (TypeError,ValueError):
+            k, = key
+            data = f[k]
         if plottype=='mean':
-            fig,ax = plt_map(lon.T,lat.T,np.mean(f[key],axis=0))
+            fig,ax = plt_map(lon.T,lat.T,np.mean(data,axis=0))
         elif plottype=='timestep':
-            fig,ax = plt_map(lon.T,lat.T,f[key][timestep,:,:])
+            fig,ax = plt_map(lon.T,lat.T,data[timestep,:,:])
         else:
             logger.error('Unknown plot type!')
     

@@ -26,7 +26,7 @@ FROM
     WHERE r.STAT_LEVL_=2 AND g.ROWID IN (
             SELECT ROWID 
             FROM SpatialIndex
-            WHERE f_table_name = 'merra_grid' 
+            WHERE f_table_name = {grid_table} 
                 AND search_frame = TRANSFORM(rgeom,:2))
     AND ST_Intersects(ggeom,rgeom))
 GROUP BY rid,gid
@@ -45,6 +45,42 @@ ORDER BY gid""".format(grid_table=u.quote_identifier(grid_table),regions_table=u
 
     return intersections
 
+
+def create_grid_polygons(x,y):
+    """
+    Creates a list of grid polygons (rectangles) in well-known text (WKT) format from evenly spaced x and y vectors.
+
+    Args:
+        x (1d numpy array): vector of x-values
+        y (1d numpy array): vector of y-values
+
+    Returns:
+        list: grid polygons in WKT format
+    """
+    import numpy as np
+    import pdb
+
+    xdiff = np.diff(x)
+    if np.std(xdiff)>1e-10:
+        raise ValueError('Uneven longitude spacing.')
+    dx = np.mean(xdiff)
+
+    ydiff = np.diff(y)
+    if np.std(ydiff)>1e-10:
+        raise ValueError('Uneven latitude spacing.')
+    dy = np.mean(ydiff)
+
+    logger.debug('Spacing is ({},{})'.format(dx,dy))
+    xmatr,ymatr = np.meshgrid(x,y)
+
+    rows = []
+    for (i,j),x_ij in np.ndenumerate(xmatr):
+        y_ij = ymatr[i,j]
+        x1,y1 = x_ij-dx/2.,y_ij-dy/2.
+        x2,y2 = x_ij+dx/2.,y_ij+dy/2.
+        rows.append((i,j,x_ij,y_ij,'POLYGON(({x1} {y1},{x1} {y2},{x2} {y2},{x2} {y1},{x1} {y1}))'.format(x1=x1,y1=y1,x2=x2,y2=y2)))
+
+    return rows
 
 
 

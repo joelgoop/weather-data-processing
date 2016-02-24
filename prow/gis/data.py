@@ -5,6 +5,9 @@ import prow.utils as u
 
 logger = logging.getLogger(__name__)
 
+GEOM_COL_TYPES = ['POLYGON','MULTIPOLYGON','POINT']
+OTHER_COL_TYPES = ['REAL','INTEGER','TEXT','BLOB']
+
 def copy_geoms(to_conn,to_table,from_db,from_tables,geom_col='geometry',
                 calc_area_col='shape_area',**kwargs):
     """
@@ -24,26 +27,7 @@ def copy_geoms(to_conn,to_table,from_db,from_tables,geom_col='geometry',
     esc_from_tables = map(u.quote_identifier,from_tables)
     esc_geom_col = u.quote_identifier(geom_col)
 
-    # If calc_area_col is not set, use empty string
-    try:
-        esc_calc_area_col = u.quote_identifier(calc_area_col)
-        area_col_def_str = ', {} REAL'.format(esc_calc_area_col)
-    except AttributeError as e:
-        logger.debug('Using calc_area_col did not work. Value was: {}'.format(calc_area_col))
-        area_col_def_str = ''
-
-    # Create table for geometries
-    sql = 'CREATE TABLE IF NOT EXISTS {} ("id" INTEGER PRIMARY KEY ASC{})'\
-            .format(esc_to_table,area_col_def_str)
-    logger.debug("Table creation SQL:\n   '{}'".format(sql))
-    logger.info("Creating table {}".format(esc_to_table))
-    conn.execute(sql)
-
-    sql = 'SELECT AddGeometryColumn({}, {}, 3035, "MULTIPOLYGON", "XY")'\
-            .format(esc_to_table,esc_geom_col)
-    logger.debug("Geometry column creation SQL:\n   '{}'".format(sql))
-    logger.info("Creating geometry column {}.".format(esc_geom_col))
-    conn.execute(sql)
+    create_spatial_table(to_conn,to_table,3035,'MULTIPOLYGON')
 
     print conn.execute("SELECT COUNT({}) FROM {} LIMIT 1".format(esc_geom_col,esc_to_table)).fetchall()
 
@@ -63,7 +47,7 @@ def drop_table(conn,table):
     """
     sql = 'DROP TABLE IF EXISTS {}'.format(u.quote_identifier(table))
     logger.debug("Drop table SQL:\n    '{}'".format(sql))
-    logger.info('Dropping table {}'.format(tab_name))
+    logger.info('Dropping table {}'.format(table))
     conn.execute(sql)
 
 
@@ -91,6 +75,55 @@ def connect_spatial_db(path,dll_path):
     conn.execute("COMMIT ;")
 
     return conn
+
+def create_spatial_table(conn,tbl_name,srid,geom_type,other_cols=None,geom_col='geometry'):
+    """
+    Create a spatial table.
+
+    Args:
+        conn: database connection object
+        tbl_name: name of new table
+        srid: SRID of projection for new table
+        geom_type: type of geometries in new table
+        other_cols: sequence of tuples with (name,type) of additional columns
+        geom_col: name of geometry column
+    """
+
+    geom_type = geom_type.upper()
+    if geom_type not in GEOM_COL_TYPES:
+        raise ValueError("Unknown geometry column type '{}'".format(geom_type))
+    srid = int(srid)
+
+    if other_cols:
+        other_col_list = []
+        other_col_sep = ', '
+        for colname,coltype in other_cols:
+            esc_name = u.quote_identifier(colname)
+            coltype = coltype.upper()
+            if coltype not in OTHER_COL_TYPES:
+                raise ValueError("Unknown column type '{}'.".format(coltype))
+            other_col_list.append(esc_name+' '+coltype)
+        other_col_str = other_col_sep + other_col_sep.join(other_col_list)
+    else:
+        other_col_str = ''
+
+    esc_tbl_name = u.quote_identifier(tbl_name)
+    esc_geom_col = u.quote_identifier(geom_col)
+
+
+    # Create table for geometries
+    sql = 'CREATE TABLE IF NOT EXISTS {} ("id" INTEGER PRIMARY KEY ASC{})'\
+            .format(esc_tbl_name,other_col_str)
+    logger.debug("Table creation SQL:\n   '{}'".format(sql))
+    logger.info("Creating table {}".format(esc_tbl_name))
+    conn.execute(sql)
+
+    sql = 'SELECT AddGeometryColumn({}, {}, {}, "{}", "XY")'\
+            .format(esc_tbl_name,esc_geom_col,srid,geom_type)
+    logger.debug("Geometry column creation SQL:\n   '{}'".format(sql))
+    logger.info("Creating geometry column {}.".format(esc_geom_col))
+    conn.execute(sql)
+
 
 
 
